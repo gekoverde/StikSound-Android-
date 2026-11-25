@@ -298,6 +298,14 @@ La idea principal es que la UI no contiene reglas de negocio: React llama a caso
 
 En macOS, si aparece el aviso de desarrollador no verificado, haz clic derecho sobre la app y elige **Abrir**.
 
+### Android
+
+1. Descarga `StikSound-*-android.apk` desde [**Releases**](https://github.com/gekoverde/StikSound-Android-/releases/latest) en el propio móvil.
+2. Ábrelo. Si Android lo pide, permite **Instalar apps desconocidas** para el navegador o el gestor de archivos que uses.
+3. Abre StikSound. Para un sticker con sonido: **⬇ Guardar** (el vídeo va a la Galería) y en WhatsApp → 😊 → **Stickers** → **Crear** → elige el vídeo.
+
+Requiere Android 10 o superior con *Android System WebView* actualizado desde Google Play.
+
 ### Extensión de Chrome, Edge o Brave
 
 1. Descarga `StikSound-*-chrome-extension.zip` desde [**Releases**](https://github.com/SilverFeit/StikSound/releases/latest).
@@ -407,7 +415,34 @@ cd apps/android/android
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-El APK queda en `apps/android/android/app/build/outputs/apk/debug/app-debug.apk`. Al compilar desde Gradle, el paquete web se regenera automáticamente con Vite (sáltalo con `-PskipWebBuild`).
+El APK queda en `apps/android/android/app/build/outputs/apk/debug/app-debug.apk`.
+
+#### Publicar el APK firmado
+
+`assembleRelease` genera un APK optimizado con R8. Para poder instalarlo y actualizarlo hay que firmarlo siempre con **la misma clave**. Si la pierdes, quien tenga la app instalada tendrá que desinstalarla para poner una versión nueva.
+
+1. Crea la clave una sola vez, **fuera del repositorio**, y guarda una copia de seguridad:
+
+   ```bash
+   keytool -genkeypair -v -keystore stiksound-release.jks -alias stiksound -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+2. Firma en local creando `apps/android/android/keystore.properties` (está en `.gitignore`):
+
+   ```properties
+   storeFile=C:/ruta/segura/stiksound-release.jks
+   storePassword=...
+   keyAlias=stiksound
+   keyPassword=...
+   ```
+
+   Después ejecuta `./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`. Sin ese archivo, el APK sale sin firmar.
+
+3. Para que el workflow **Release** adjunte el APK a cada versión (`git tag v1.2.0 && git push --tags`), añade en GitHub → *Settings → Secrets and variables → Actions* estos secretos:
+   - `STIKSOUND_KEYSTORE_B64`: el `.jks` en base64 (`base64 -w0 stiksound-release.jks`, o en PowerShell `[Convert]::ToBase64String([IO.File]::ReadAllBytes("stiksound-release.jks"))`)
+   - `STIKSOUND_KEYSTORE_PASSWORD`, `STIKSOUND_KEY_ALIAS` y `STIKSOUND_KEY_PASSWORD` (este último, si es distinto del de la keystore)
+
+La versión del APK (`versionName`/`versionCode`) sale de `apps/android/package.json`, así que sube junto con el resto del repo. Al compilar desde Gradle, el paquete web se regenera automáticamente con Vite (sáltalo con `-PskipWebBuild`).
 
 Cómo funciona:
 

@@ -106,8 +106,58 @@ jobs:
           name: macos-assets
           path: release-assets/*
 
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install dependencies and build the web bundle
+        run: |
+          npm ci
+          npm run build -w @stiksound/android
+      - name: Restore the release keystore from secrets
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.STIKSOUND_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Missing secret STIKSOUND_KEYSTORE_B64. See README > App Android > Publicar el APK firmado."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/stiksound-release.jks"
+          echo "STIKSOUND_KEYSTORE_FILE=$RUNNER_TEMP/stiksound-release.jks" >> "$GITHUB_ENV"
+      - name: Build signed release APK
+        working-directory: apps/android/android
+        env:
+          STIKSOUND_KEYSTORE_PASSWORD: ${{ secrets.STIKSOUND_KEYSTORE_PASSWORD }}
+          STIKSOUND_KEY_ALIAS: ${{ secrets.STIKSOUND_KEY_ALIAS }}
+          STIKSOUND_KEY_PASSWORD: ${{ secrets.STIKSOUND_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon -PskipWebBuild testDebugUnitTest assembleRelease
+      - name: Package APK
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/stiksound-release.jks"
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" != v* ]]; then TAG="${{ github.event.inputs.tag }}"; fi
+          VERSION="${TAG#v}"
+          mkdir -p release-assets
+          cp apps/android/android/app/build/outputs/apk/release/app-release.apk "release-assets/StikSound-${VERSION}-android.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-assets
+          path: release-assets/*
+
   publish-release:
-    needs: [build-extension, build-windows, build-macos]
+    needs: [build-extension, build-windows, build-macos, build-android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -124,7 +174,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref_name, 'v') && github.ref_name || github.event.inputs.tag }}
-          name: StikSound ${{ startsWith(github.ref_name, 'v') && github.ref_name || github.event.inputs.tag }} — Windows, macOS & Chrome Extension
+          name: StikSound ${{ startsWith(github.ref_name, 'v') && github.ref_name || github.event.inputs.tag }} — Windows, macOS, Android & Chrome Extension
           generate_release_notes: true
           body: |
             ## Descargas listas para usar (sin instalar FFmpeg ni dependencias extra)
@@ -133,6 +183,7 @@ jobs:
             | --- | --- | --- |
             | **Windows 10/11 (64-bit)** | `StikSound-*-windows-x64.exe` *(portable)* o `*-setup.exe` *(instalador)* | Doble clic para abrir o instalar al instante. |
             | **macOS (Apple Silicon & Intel)** | `StikSound-*-macos-universal.dmg` o `.app.zip` | Arrastra `StikSound.app` a **Aplicaciones**. *(Si macOS muestra aviso de desarrollador no verificado: clic derecho → **Abrir**).* |
+            | **Android 10+** | `StikSound-*-android.apk` | Ábrelo en el móvil y permite **Instalar apps desconocidas** para tu navegador o gestor de archivos. Para un sticker con sonido: **⬇ Guardar** (va a la Galería) y en WhatsApp → 😊 → Stickers → **Crear**. |
             | **Google Chrome / Edge / Brave** | `StikSound-*-chrome-extension.zip` | Descomprime el ZIP, abre `chrome://extensions/`, activa **Modo de desarrollador** y pulsa **Cargar descomprimida** seleccionando la carpeta descomprimida. |
 
             ### Qué incluye esta versión
