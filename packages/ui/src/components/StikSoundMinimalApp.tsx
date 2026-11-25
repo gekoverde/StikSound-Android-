@@ -22,6 +22,14 @@ import { TimelineTrimBar } from "./TimelineTrimBar";
 
 export type ShareOutcome = "shared" | "cancelled" | "needs-tap";
 
+/** A microphone take in progress, provided by shells that can record (see ShellBridge.startAudioRecording). */
+export interface AudioRecordingSession {
+  /** Ends the take and resolves with an audio file the editor can import (WAV in the web engine). */
+  stop(): Promise<{ bytes: Uint8Array; name: string }>;
+  /** Discards the take and releases the microphone. */
+  cancel(): void;
+}
+
 /** Media or a link handed to the app from outside (for example the Android share sheet). */
 export type IncomingItem =
   | { kind: "sticker"; bytes: Uint8Array; name: string }
@@ -44,6 +52,12 @@ export interface ShellBridge {
    * Returns an unsubscribe function.
    */
   subscribeIncoming?(handler: (item: IncomingItem) => void): () => void;
+  /**
+   * Starts recording from the microphone. The shell asks for the OS permission first and rejects
+   * with a StikSoundError ("microphone-denied" / "microphone-unavailable") when it cannot record.
+   * When absent, the record button is hidden.
+   */
+  startAudioRecording?(): Promise<AudioRecordingSession>;
 }
 
 export interface PlatformOptions {
@@ -279,6 +293,69 @@ export const StikSoundMinimalApp: React.FC<StikSoundMinimalAppProps> = ({
     [controller, project, effectiveMaxAudioMs, handleError, stopPlayback]
   );
 
+  // ----- Microphone recording -------------------------------------------------------------
+  const recordingRef = useRef<AudioRecordingSession | null>(null);
+  const recordingStartedAtRef = useRef(0);
+  const [recordingMs, setRecordingMs] = useState<number | null>(null);
+  const [isStartingRecording, setIsStartingRecording] = useState(false);
+
+  const startRecording = useCallback(async () => {
+    if (!shell.startAudioRecording || recordingRef.current || isStartingRecording || isBusy) return;
+    stopPlayback();
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setIsStartingRecording(true);
+    try {
+      const session = await shell.startAudioRecording();
+      recordingRef.current = session;
+      recordingStartedAtRef.current = Date.now();
+      setRecordingMs(0);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsStartingRecording(false);
+    }
+  }, [shell, isStartingRecording, isBusy, stopPlayback, handleError]);
+
+  const stopRecording = useCallback(async () => {
+    const session = recordingRef.current;
+    if (!session) return;
+    recordingRef.current = null;
+    setRecordingMs(null);
+    try {
+      const take = await session.stop();
+      await importAudioBytes(take.bytes, take.name);
+    } catch (err) {
+      handleError(err);
+    }
+  }, [importAudioBytes, handleError]);
+
+  const cancelRecording = useCallback(() => {
+    recordingRef.current?.cancel();
+    recordingRef.current = null;
+    setRecordingMs(null);
+  }, []);
+
+  // Elapsed-time readout and the automatic stop at LIMITS.MAX_RECORDING_MS.
+  const stopRecordingRef = useRef(stopRecording);
+  stopRecordingRef.current = stopRecording;
+  const isRecording = recordingMs !== null;
+  useEffect(() => {
+    if (!isRecording) return;
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - recordingStartedAtRef.current;
+      if (elapsed >= LIMITS.MAX_RECORDING_MS) {
+        void stopRecordingRef.current();
+      } else {
+        setRecordingMs(elapsed);
+      }
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [isRecording]);
+
+  // Never keep the microphone open after the editor goes away.
+  useEffect(() => () => recordingRef.current?.cancel(), []);
+
   const handleGlobalPaste = useCallback(
     async (e: ClipboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -409,6 +486,7 @@ export const StikSoundMinimalApp: React.FC<StikSoundMinimalAppProps> = ({
 
   const handleResetAll = () => {
     stopPlayback();
+    cancelRecording();
     setProject((prev) => resetProject(prev));
     setReadyArtifact(null);
     setDownloadMenuOpen(false);
@@ -967,9 +1045,18 @@ export const StikSoundMinimalApp: React.FC<StikSoundMinimalAppProps> = ({
         onChangeRange={handleRangeChange}
         onChangeMaxWindowMs={handleMaxDurationChange}
         onTogglePlay={togglePlay}
+        recording={
+          shell.startAudioRecording
+            ? { active: isRecording, starting: isStartingRecording, elapsedMs: recordingMs ?? 0, maxMs: LIMITS.MAX_RECORDING_MS }
+            : undefined
+        }
+        onStartRecording={startRecording}
+        onStopRecording={stopRecording}
         labels={{
           placeholder: copy.audioInputPlaceholder,
           pickBtn: copy.audioPickBtn,
+          recordBtn: copy.recordBtn,
+          stopRecordBtn: copy.stopRecordBtn,
           play: copy.playPreview,
           stop: copy.stopPreview,
           maxDurationAria: copy.maxDurationAria

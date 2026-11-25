@@ -30,6 +30,10 @@ class NativeBridge(
         fun saveToDownloads(name: String, mime: String, bytes: ByteArray): String
         fun stageForShare(name: String, bytes: ByteArray): File
         fun launchShare(file: File, mime: String)
+
+        /** Shows the RECORD_AUDIO dialog if needed; calls back on the UI thread. */
+        fun requestMicrophone(onResult: (granted: Boolean, canAskAgain: Boolean) -> Unit)
+        fun openAppSettings()
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -79,6 +83,13 @@ class NativeBridge(
                 val file = host.stageForShare(request.getString("name"), bytes)
                 val mime = mimeOf(request)
                 main.post { host.launchShare(file, mime) }
+                JSONObject()
+            }
+            "requestMicrophone" -> host.requestMicrophone { granted, canAskAgain ->
+                sendReply(replyProxy, id, JSONObject().put("granted", granted).put("canAskAgain", canAskAgain), null)
+            }
+            "openAppSettings" -> reply(replyProxy, id) {
+                host.openAppSettings()
                 JSONObject()
             }
             else -> sendReply(replyProxy, id, null, "native-error: unknown operation")

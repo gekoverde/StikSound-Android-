@@ -293,6 +293,46 @@ textarea {
   cursor: pointer;
 }
 
+/* With the record button there are four controls: the link field takes its own row. */
+.stik-audio-empty-form.stik-has-record {
+  flex-wrap: wrap;
+}
+
+.stik-audio-empty-form.stik-has-record .stik-url-input {
+  flex: 1 1 100%;
+}
+
+.stik-audio-empty-form.stik-has-record .stik-record-btn {
+  flex: 1;
+}
+
+.stik-record-btn {
+  white-space: nowrap;
+}
+
+.stik-record-btn.stik-recording {
+  background: #d93848;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  animation: stik-rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes stik-rec-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stik-record-btn.stik-recording {
+    animation: none;
+  }
+}
+
 .stik-pill-btn.stik-pill-wide {
   flex: 1;
   padding: 12px;

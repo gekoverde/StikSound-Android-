@@ -163,6 +163,22 @@ export async function saveFile(name: string, mime: string, bytes: Uint8Array): P
   return result.path;
 }
 
+export interface MicrophonePermission {
+  granted: boolean;
+  /** False once the user picked "Don't allow" twice: only Android Settings can grant it then. */
+  canAskAgain: boolean;
+}
+
+/** Asks Android for RECORD_AUDIO (shows the system dialog when needed). */
+export function requestMicrophonePermission(): Promise<MicrophonePermission> {
+  return call<MicrophonePermission>("requestMicrophone");
+}
+
+/** Opens Android Settings on this app's page, where the microphone can be allowed by hand. */
+export function openAppSettings(): Promise<void> {
+  return call("openAppSettings");
+}
+
 /** Opens the Android share sheet (WhatsApp, Telegram, Drive…) with the file. */
 export async function shareFile(name: string, mime: string, bytes: Uint8Array): Promise<void> {
   const uploadId = await upload(bytes);

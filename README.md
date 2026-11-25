@@ -40,7 +40,7 @@ Puedes usar **StikSound directamente desde el navegador** sin instalar nada (fun
 | **WebM con transparencia** | ❌ *(solo MP4 en móvil/web)* | ✅ |
 
 > [!TIP]
-> **App Android (`apps/android`):** funciona sin conexión, acepta **enlaces de MyInstants** (descarga nativa sin CORS), recibe imágenes, GIF, vídeos y audios desde **Compartir** en cualquier app y envía el vídeo a **WhatsApp** con la hoja de compartir de Android. Ver [App Android](#app-android).
+> **App Android (`apps/android`):** funciona sin conexión, permite **grabar el sonido con el micrófono**, acepta **enlaces de MyInstants** (descarga nativa sin CORS), recibe imágenes, GIF, vídeos y audios desde **Compartir** en cualquier app y envía el vídeo a **WhatsApp** con la hoja de compartir de Android. Ver [App Android](#app-android).
 
 ---
 
@@ -323,7 +323,7 @@ En macOS, si aparece el aviso de desarrollador no verificado, haz clic derecho s
   - máximo 25 MB por audio;
   - tiempo máximo de descarga de 20 segundos.
 - En desktop, la descarga se realiza desde el backend Rust para evitar limitaciones de CORS y aplica validaciones adicionales de direcciones IP privadas o reservadas.
-- En Android, la descarga la hace código Kotlin nativo con la misma política (incluido el bloqueo de IPs privadas). La app solo pide el permiso `INTERNET`, no usa tráfico HTTP sin cifrar y el puente JS-nativo solo acepta mensajes del origen propio de la app.
+- En Android, la descarga la hace código Kotlin nativo con la misma política (incluido el bloqueo de IPs privadas). La app pide `INTERNET` (solo para MyInstants) y `RECORD_AUDIO` (solo al pulsar **🎙 Grabar**, con el diálogo del sistema), no usa tráfico HTTP sin cifrar y el puente JS-nativo solo acepta mensajes del origen propio de la app.
 - Los paquetes ZIP se validan contra path traversal antes de abrirse.
 - Auditoría de seguridad del fork: [docs/security-audit-2026-11-25.md](docs/security-audit-2026-11-25.md).
 - Los sonidos descargados desde MyInstants pertenecen a sus respectivos autores.
@@ -415,6 +415,7 @@ Cómo funciona:
 - `MainActivity.kt` aloja la WebView, abre el selector de archivos del sistema y recibe lo que compartes a StikSound (imagen, GIF, vídeo, audio o un enlace de MyInstants).
 - `NativeBridge.kt` expone `window.StikSoundNative` (`WebMessageListener`) para descargar de MyInstants, guardar en `Descargas/StikSound` y abrir la hoja de compartir (WhatsApp, Telegram…).
 - `MyInstantsFetcher.kt` es un port línea a línea de la política de desktop, con tests JVM que replican los de TypeScript.
+- **🎙 Grabar** usa el micrófono: la primera vez Android muestra su diálogo de permiso (`RECORD_AUDIO`). La WebView solo concede la captura de audio (nunca la cámara) a la página propia de la app. La toma se convierte a WAV de 48 kHz y se corta sola a los 30 s; después se recorta a 5 o 10 s como cualquier audio. Si deniegas el permiso dos veces, Android ya no vuelve a preguntar y la app abre los Ajustes de StikSound para activarlo a mano.
 
 > [!NOTE]
 > Igual que en las demás versiones, el MP4 que se comparte es un **vídeo**, no un sticker sonoro oficial de WhatsApp. Consulta [docs/specifications/whatsapp.md](docs/specifications/whatsapp.md).

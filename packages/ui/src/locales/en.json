@@ -20,6 +20,8 @@
   "downloadFmtBundle": "High Quality ZIP Bundle (WebP + Opus)",
   "downloadFmtWebp": "Static WebP Sticker Only (1:1 Transparent)",
   "audioInputPlaceholder": "Paste MyInstants URL or drop MP3/WAV...",
+  "recordBtn": "🎙 Record",
+  "stopRecordBtn": "Stop recording",
   "audioPickBtn": "Audio",
   "playPreview": "Play preview",
   "stopPreview": "Stop",

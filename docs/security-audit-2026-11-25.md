@@ -42,4 +42,4 @@ Added `object-src 'none'; base-uri 'none'; frame-ancestors 'none'` to the Tauri 
 
 ## Notes for the Android client
 
-The Android app added in `apps/android` follows the same rules. It asks only for `INTERNET`, uses no cleartext traffic and keeps the WebView off `file://` (it reads `content://` only for files the user picks, and the CSP blocks loading such URLs). Its native bridge accepts messages only from the app's own asset origin, and it ports the desktop MyInstants policy line for line, with JVM tests that mirror the TypeScript cases.
+The Android app added in `apps/android` follows the same rules. It asks for `INTERNET` (MyInstants only) and, since the Record button was added, `RECORD_AUDIO` at runtime. The WebView grants audio capture only to the app origin and never the camera. It uses no cleartext traffic and keeps the WebView off `file://` (it reads `content://` only for files the user picks, and the CSP blocks loading such URLs). Its native bridge accepts messages only from the app's own asset origin, and it ports the desktop MyInstants policy line for line, with JVM tests that mirror the TypeScript cases.

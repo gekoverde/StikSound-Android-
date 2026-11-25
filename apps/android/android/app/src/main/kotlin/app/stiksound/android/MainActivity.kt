@@ -1,13 +1,17 @@
 package app.stiksound.android
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.webkit.MimeTypeMap
+import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -20,6 +24,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.core.view.ViewCompat
@@ -49,6 +54,21 @@ class MainActivity : ComponentActivity(), NativeBridge.Host {
         fileCallback = null
         callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data))
     }
+
+    // ----- Microphone permission (RECORD_AUDIO) -------------------------------------------------
+
+    private val micCallbacks = mutableListOf<(Boolean, Boolean) -> Unit>()
+
+    private val requestMicPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        // After a denial, Android only shows the dialog again while the rationale flag is true.
+        val canAskAgain = granted || shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+        val callbacks = micCallbacks.toList()
+        micCallbacks.clear()
+        callbacks.forEach { it(granted, canAskAgain) }
+    }
+
+    private fun hasMicPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,6 +137,20 @@ class MainActivity : ComponentActivity(), NativeBridge.Host {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            // getUserMedia from the page: grant audio capture only to the app's own origin, only
+            // the microphone (never the camera), and only after the user allowed RECORD_AUDIO.
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val origin = request.origin
+                val fromApp = origin != null && origin.scheme == "https" && origin.host == APP_HOST
+                val onlyMicrophone = request.resources.isNotEmpty() &&
+                    request.resources.all { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }
+                if (fromApp && onlyMicrophone && hasMicPermission()) {
+                    request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                } else {
+                    request.deny()
+                }
+            }
+
             override fun onShowFileChooser(
                 view: WebView,
                 callback: ValueCallback<Array<Uri>>,
@@ -248,6 +282,29 @@ class MainActivity : ComponentActivity(), NativeBridge.Host {
             startActivity(Intent.createChooser(send, getString(R.string.share_chooser_title)))
         } catch (_: ActivityNotFoundException) {
             toast(R.string.no_share_target)
+        }
+    }
+
+    override fun requestMicrophone(onResult: (granted: Boolean, canAskAgain: Boolean) -> Unit) {
+        runOnUiThread {
+            if (hasMicPermission()) {
+                onResult(true, true)
+                return@runOnUiThread
+            }
+            micCallbacks += onResult
+            // One system dialog at a time; later callers get the same answer.
+            if (micCallbacks.size == 1) requestMicPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    override fun openAppSettings() {
+        runOnUiThread {
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
+                )
+            } catch (_: ActivityNotFoundException) {
+            }
         }
     }
 

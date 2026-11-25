@@ -187,6 +187,56 @@ describe("StikSoundMinimalApp UI", () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
+  it("records from the microphone through the shell and imports the take", async () => {
+    const take = { bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]), name: "mic-test.wav" };
+    const stop = vi.fn().mockResolvedValue(take);
+    const cancel = vi.fn();
+    const startAudioRecording = vi.fn().mockResolvedValue({ stop, cancel });
+
+    render(
+      <StikSoundMinimalApp
+        engine={createTestEngine(512, 512)}
+        shell={{ saveArtifact: vi.fn(), startAudioRecording }}
+        initialLocale="es"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("record-btn"));
+    await waitFor(() => expect(screen.getByTestId("record-stop-btn")).toBeTruthy());
+    expect(startAudioRecording).toHaveBeenCalledTimes(1);
+    // The file picker and the link field are locked while the microphone is open.
+    expect((screen.getByTestId("audio-pick-btn") as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByTestId("record-stop-btn"));
+    await waitFor(() => expect(screen.getByTestId("duration-readout")).toBeTruthy());
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("explains how to allow the microphone when the permission is denied", async () => {
+    const startAudioRecording = vi
+      .fn()
+      .mockRejectedValue(new StikSoundError("microphone-denied", "denied by the user"));
+
+    render(
+      <StikSoundMinimalApp
+        engine={createTestEngine(512, 512)}
+        shell={{ saveArtifact: vi.fn(), startAudioRecording }}
+        initialLocale="es"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("record-btn"));
+    await waitFor(() => expect(screen.getByTestId("error-banner").textContent).toContain("micrófono"));
+    expect(screen.getByTestId("error-banner").textContent).toContain("Ajustes");
+    expect(screen.getByTestId("record-btn")).toBeTruthy();
+  });
+
+  it("hides the record button when the shell cannot record", () => {
+    render(<StikSoundMinimalApp engine={createTestEngine()} shell={{ saveArtifact: vi.fn() }} initialLocale="en" />);
+    expect(screen.queryByTestId("record-btn")).toBeNull();
+  });
+
   it("preserves a shorter saved trim when repositioning audio under the 10s cap", () => {
     const onChangeRange = vi.fn();
     render(

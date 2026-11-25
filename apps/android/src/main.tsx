@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import type { ExportArtifact, LocaleCode } from "@stiksound/core";
-import { WebMediaEngine } from "@stiksound/media-web";
+import { StikSoundError, type ExportArtifact, type LocaleCode } from "@stiksound/core";
+import { WebMediaEngine, startMicrophoneRecording } from "@stiksound/media-web";
 import { MyInstantsProvider, type FetchLike } from "@stiksound/providers";
 import { StikSoundMinimalApp, type ShellBridge } from "@stiksound/ui";
 import "../../../packages/ui/src/styles.css";
@@ -12,6 +12,8 @@ import {
   fetchMyInstants,
   initNativeBridge,
   isNativeAvailable,
+  openAppSettings,
+  requestMicrophonePermission,
   saveFile,
   shareFile,
   subscribeIncoming
@@ -77,7 +79,19 @@ const shell: ShellBridge = {
     }
     await saveFile(suggestedName, "application/zip", zipBytes);
   },
-  subscribeIncoming
+  subscribeIncoming,
+  async startAudioRecording() {
+    if (isNativeAvailable()) {
+      // Android asks for RECORD_AUDIO first; the WebView then grants getUserMedia to this page only.
+      const permission = await requestMicrophonePermission();
+      if (!permission.granted) {
+        // After "Don't allow" twice Android stops showing the dialog, so take the user to Settings.
+        if (!permission.canAskAgain) await openAppSettings().catch(() => undefined);
+        throw new StikSoundError("microphone-denied", "RECORD_AUDIO was not granted.");
+      }
+    }
+    return startMicrophoneRecording();
+  }
 };
 
 const locale: LocaleCode = navigator.language.toLowerCase().startsWith("es") ? "es" : "en";
