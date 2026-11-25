@@ -25,7 +25,11 @@ Thumbs.db
 apps/android/android/.gradle/
 apps/android/android/.kotlin/
 apps/android/android/local.properties
+apps/android/android/keystore.properties
+*.jks
+*.keystore
 apps/android/android/app/src/main/assets/www/
 *.apk
 *.aab
 .idea/
+*.iml
