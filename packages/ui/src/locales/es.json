@@ -20,6 +20,8 @@
   "downloadFmtBundle": "Paquete ZIP Alta Calidad (WebP + Opus)",
   "downloadFmtWebp": "Solo Sticker WebP (1:1 Transparente)",
   "audioInputPlaceholder": "Pega URL de MyInstants o suelta MP3/WAV...",
+  "recordBtn": "🎙 Grabar",
+  "stopRecordBtn": "Detener grabación",
   "audioPickBtn": "Audio",
   "playPreview": "Reproducir vista previa",
   "stopPreview": "Detener",
@@ -43,6 +45,7 @@
   "exportSuccessWebp": "Sticker WebP descargado. Es una imagen estática, sin audio.",
   "exportSuccessBundle": "Paquete guardado. Nota: contiene la imagen y el audio por separado; WhatsApp puede tratar la imagen como sticker normal.",
   "close": "Cerrar",
+  "shareDoneToast": "",
   "shareReadyToast": "Video listo. Toca \"Compartir\" para mandarlo a WhatsApp o guardarlo en Fotos.",
   "videoSilentToast": "Este video no tiene sonido (o no se pudo leer). Si quieres, elige un audio con el botón de audio."
 }

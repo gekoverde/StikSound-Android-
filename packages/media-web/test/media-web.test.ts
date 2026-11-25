@@ -203,3 +203,19 @@ describe("packages/media-web", () => {
     ).rejects.toMatchObject({ code: "unsupported-codec" });
   });
 });
+
+describe("microphone error mapping", () => {
+  it("maps permission failures to microphone-denied and the rest to microphone-unavailable", async () => {
+    const { microphoneError } = await import("../src/audio-recorder");
+    expect(microphoneError({ name: "NotAllowedError" }).code).toBe("microphone-denied");
+    expect(microphoneError({ name: "SecurityError" }).code).toBe("microphone-denied");
+    expect(microphoneError({ name: "NotFoundError" }).code).toBe("microphone-unavailable");
+    expect(microphoneError({ name: "NotReadableError" }).code).toBe("microphone-unavailable");
+    expect(microphoneError(null).code).toBe("microphone-unavailable");
+  });
+
+  it("refuses to start where the browser has no recorder", async () => {
+    const { startMicrophoneRecording } = await import("../src/audio-recorder");
+    await expect(startMicrophoneRecording()).rejects.toMatchObject({ code: "microphone-unavailable" });
+  });
+});

@@ -5,3 +5,4 @@ export * from "./audio-utils";
 export * from "./image-utils";
 export * from "./web-media-engine";
 export * from "./video-utils";
+export * from "./audio-recorder";

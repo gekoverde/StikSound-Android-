@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StikSound</string>
+    <string name="share_chooser_title">Compartir con…</string>
+    <string name="incoming_unsupported">Ese tipo de archivo no se puede usar en StikSound.</string>
+    <string name="incoming_too_large">El archivo es demasiado grande.</string>
+    <string name="incoming_read_failed">No se pudo leer el archivo compartido.</string>
+    <string name="saved_to_downloads">Guardado en Descargas/StikSound</string>
+    <string name="no_share_target">No hay ninguna app para compartir este archivo.</string>
+    <string name="webview_missing">Este teléfono no tiene un WebView de Android compatible. Actualiza \"Android System WebView\" desde Google Play.</string>
+</resources>

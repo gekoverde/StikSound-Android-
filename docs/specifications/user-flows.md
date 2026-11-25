@@ -68,5 +68,7 @@ Every failed operation returns a code the UI maps to a sentence:
 | `sticker-too-large` | WebP could not be brought under 100 KB |
 | `package-invalid` | Imported package failed schema, path, or size checks |
 | `export-unsupported` | The selected profile is not implemented |
+| `microphone-denied` | The user or the OS refused microphone access |
+| `microphone-unavailable` | No microphone, it is busy, or the recorder failed |
 
 The sentence includes the next action. Example: "This build of the Chrome extension cannot encode this clip. Download the project and open it in the StikSound desktop app."

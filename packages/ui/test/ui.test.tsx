@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StikSoundError, type MediaEngine, type SoundProvider } from "@stiksound/core";
 import { StikSoundMinimalApp, TimelineTrimBar } from "../src/index";
 
@@ -144,6 +144,132 @@ describe("StikSoundMinimalApp UI", () => {
     await waitFor(() => expect(screen.getByTestId("myinstants-url-input")).toBeTruthy());
     expect(okArrowBtn.disabled).toBe(true);
     expect(container.querySelector('[data-testid="sticker-loaded-badge"]')).toBeNull();
+  });
+
+  it("imports a sticker and a MyInstants link handed over by the shell (Android share sheet)", async () => {
+    const saveArtifact = vi.fn().mockResolvedValue(undefined);
+    const resolve = vi.fn(async (u: string) => ({
+      page_url: u,
+      media_url: "https://www.myinstants.com/media/sounds/shared.mp3",
+      title: "Shared",
+      bytes: new Uint8Array([0x49, 0x44, 0x33, 0x03])
+    }));
+    const provider: SoundProvider = { id: "myinstants", canResolve: (u) => u.includes("myinstants.com"), resolve };
+    let deliver: ((item: import("../src/index").IncomingItem) => void) | null = null;
+    const unsubscribe = vi.fn();
+    const subscribeIncoming = vi.fn((handler: (item: import("../src/index").IncomingItem) => void) => {
+      deliver = handler;
+      return unsubscribe;
+    });
+
+    const { unmount } = render(
+      <StikSoundMinimalApp
+        engine={createTestEngine(512, 512)}
+        providers={[provider]}
+        shell={{ saveArtifact, subscribeIncoming }}
+        initialLocale="es"
+      />
+    );
+    expect(subscribeIncoming).toHaveBeenCalledTimes(1);
+
+    // Both arrive at once, like an image and a link shared together; they must import in order.
+    act(() => {
+      deliver!({ kind: "sticker", bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]), name: "shared.png" });
+      deliver!({ kind: "url", url: "https://www.myinstants.com/en/instant/shared/" });
+    });
+    await waitFor(() => expect(screen.getByTestId("sticker-loaded-badge")).toBeTruthy());
+    await waitFor(() => expect(resolve).toHaveBeenCalledWith("https://www.myinstants.com/en/instant/shared/"));
+    await waitFor(() => expect((screen.getByTestId("export-ok-btn") as HTMLButtonElement).disabled).toBe(false));
+    // Re-renders must not create extra subscriptions.
+    expect(subscribeIncoming).toHaveBeenCalledTimes(1);
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("records from the microphone through the shell and imports the take", async () => {
+    const take = { bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]), name: "mic-test.wav" };
+    const stop = vi.fn().mockResolvedValue(take);
+    const cancel = vi.fn();
+    const startAudioRecording = vi.fn().mockResolvedValue({ stop, cancel });
+
+    render(
+      <StikSoundMinimalApp
+        engine={createTestEngine(512, 512)}
+        shell={{ saveArtifact: vi.fn(), startAudioRecording }}
+        initialLocale="es"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("record-btn"));
+    await waitFor(() => expect(screen.getByTestId("record-stop-btn")).toBeTruthy());
+    expect(startAudioRecording).toHaveBeenCalledTimes(1);
+    // The file picker and the link field are locked while the microphone is open.
+    expect((screen.getByTestId("audio-pick-btn") as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByTestId("record-stop-btn"));
+    await waitFor(() => expect(screen.getByTestId("duration-readout")).toBeTruthy());
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("explains how to allow the microphone when the permission is denied", async () => {
+    const startAudioRecording = vi
+      .fn()
+      .mockRejectedValue(new StikSoundError("microphone-denied", "denied by the user"));
+
+    render(
+      <StikSoundMinimalApp
+        engine={createTestEngine(512, 512)}
+        shell={{ saveArtifact: vi.fn(), startAudioRecording }}
+        initialLocale="es"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("record-btn"));
+    await waitFor(() => expect(screen.getByTestId("error-banner").textContent).toContain("micrófono"));
+    expect(screen.getByTestId("error-banner").textContent).toContain("Ajustes");
+    expect(screen.getByTestId("record-btn")).toBeTruthy();
+  });
+
+  it("shows the shell's after-share notice, and nothing when the label is empty", async () => {
+    const shareArtifact = vi.fn().mockResolvedValue("shared");
+    const take = { bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]), name: "mic.wav" };
+    const startAudioRecording = vi.fn().mockResolvedValue({ stop: vi.fn().mockResolvedValue(take), cancel: vi.fn() });
+    const deliver: Array<(item: import("../src/index").IncomingItem) => void> = [];
+    const shell = {
+      saveArtifact: vi.fn(),
+      shareArtifact,
+      startAudioRecording,
+      subscribeIncoming: (h: (item: import("../src/index").IncomingItem) => void) => {
+        deliver.push(h);
+        return () => undefined;
+      }
+    };
+
+    render(
+      <StikSoundMinimalApp
+        engine={createTestEngine(512, 512)}
+        shell={shell}
+        initialLocale="es"
+        labelOverrides={{ es: { shareDoneToast: "Llega como vídeo; guárdalo para crear el sticker." } }}
+      />
+    );
+    act(() => deliver[0]!({ kind: "sticker", bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]), name: "s.png" }));
+    await waitFor(() => expect(screen.getByTestId("record-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("record-btn"));
+    await waitFor(() => expect(screen.getByTestId("record-stop-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("record-stop-btn"));
+    await waitFor(() => expect((screen.getByTestId("export-ok-btn") as HTMLButtonElement).disabled).toBe(false));
+
+    fireEvent.click(screen.getByTestId("export-ok-btn"));
+    await waitFor(() => expect(shareArtifact).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId("status-banner").textContent).toContain("Llega como vídeo"));
+  });
+
+  it("hides the record button when the shell cannot record", () => {
+    render(<StikSoundMinimalApp engine={createTestEngine()} shell={{ saveArtifact: vi.fn() }} initialLocale="en" />);
+    expect(screen.queryByTestId("record-btn")).toBeNull();
   });
 
   it("preserves a shorter saved trim when repositioning audio under the 10s cap", () => {

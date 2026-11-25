@@ -10,7 +10,9 @@ export type StikSoundErrorCode =
   | "trim-out-of-range"
   | "sticker-too-large"
   | "package-invalid"
-  | "export-unsupported";
+  | "export-unsupported"
+  | "microphone-denied"
+  | "microphone-unavailable";
 
 export type LocaleCode = "es" | "en";
 
@@ -128,6 +130,26 @@ export const ERROR_CATALOG: Record<StikSoundErrorCode, Record<LocaleCode, Locali
     en: {
       title: "The .stiksound.zip package is invalid or contains unsafe paths.",
       action: "Ensure this is an unmodified StikSound project package."
+    }
+  },
+  "microphone-denied": {
+    es: {
+      title: "StikSound no tiene permiso para usar el micrófono.",
+      action: "Vuelve a pulsar Grabar y elige Permitir. Si lo denegaste para siempre, actívalo en Ajustes > Apps > StikSound > Permisos > Micrófono."
+    },
+    en: {
+      title: "StikSound is not allowed to use the microphone.",
+      action: "Tap Record again and choose Allow. If you denied it permanently, turn it on in Settings > Apps > StikSound > Permissions > Microphone."
+    }
+  },
+  "microphone-unavailable": {
+    es: {
+      title: "No se pudo grabar con el micrófono.",
+      action: "Comprueba que ninguna otra app lo esté usando e inténtalo de nuevo, o elige un archivo de audio."
+    },
+    en: {
+      title: "Could not record from the microphone.",
+      action: "Make sure no other app is using it and try again, or pick an audio file."
     }
   },
   "export-unsupported": {

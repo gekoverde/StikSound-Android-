@@ -19,9 +19,15 @@ export interface TimelineTrimBarProps {
   onChangeRange: (startMs: number, endMs: number) => void;
   onChangeMaxWindowMs?: (maxMs: 5000 | 10000) => void;
   onTogglePlay: () => void;
+  /** Microphone state. When undefined the record button is hidden. */
+  recording?: { active: boolean; starting: boolean; elapsedMs: number; maxMs: number };
+  onStartRecording?: () => void;
+  onStopRecording?: () => void;
   labels: {
     placeholder: string;
     pickBtn: string;
+    recordBtn?: string;
+    stopRecordBtn?: string;
     play: string;
     stop: string;
     maxDurationAria?: string;
@@ -49,8 +55,13 @@ export const TimelineTrimBar: React.FC<TimelineTrimBarProps> = ({
   onChangeRange,
   onChangeMaxWindowMs,
   onTogglePlay,
+  recording,
+  onStartRecording,
+  onStopRecording,
   labels
 }) => {
+  const isRecording = recording?.active === true;
+  const inputsLocked = isBusy || isRecording || recording?.starting === true;
   const fileRef = useRef<HTMLInputElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -143,7 +154,7 @@ export const TimelineTrimBar: React.FC<TimelineTrimBarProps> = ({
 
       {!hasAudio ? (
         <form
-          className="stik-audio-empty-form"
+          className={`stik-audio-empty-form${recording ? " stik-has-record" : ""}`}
           onSubmit={(e) => {
             e.preventDefault();
             if (urlInput.trim()) onSubmitUrl(urlInput.trim());
@@ -155,7 +166,7 @@ export const TimelineTrimBar: React.FC<TimelineTrimBarProps> = ({
               data-testid="myinstants-url-input"
               className="stik-url-input"
               value={urlInput}
-              disabled={isBusy}
+              disabled={inputsLocked}
               placeholder={labels.placeholder}
               onChange={(e) => onUrlInputChange(e.target.value)}
               onPaste={(e) => {
@@ -172,11 +183,34 @@ export const TimelineTrimBar: React.FC<TimelineTrimBarProps> = ({
             type="button"
             data-testid="audio-pick-btn"
             className={`stik-pill-btn${showUrlInput ? "" : " stik-pill-wide"}`}
-            disabled={isBusy}
+            disabled={inputsLocked}
             onClick={() => fileRef.current?.click()}
           >
             {labels.pickBtn}
           </button>
+          {recording &&
+            (isRecording ? (
+              <button
+                type="button"
+                data-testid="record-stop-btn"
+                className="stik-pill-btn stik-record-btn stik-recording"
+                aria-label={labels.stopRecordBtn ?? "Stop recording"}
+                title={labels.stopRecordBtn}
+                onClick={onStopRecording}
+              >
+                ■ {formatSec(recording.elapsedMs)} / {formatSec(recording.maxMs)}
+              </button>
+            ) : (
+              <button
+                type="button"
+                data-testid="record-btn"
+                className="stik-pill-btn stik-record-btn"
+                disabled={inputsLocked}
+                onClick={onStartRecording}
+              >
+                {labels.recordBtn ?? "Record"}
+              </button>
+            ))}
           {renderDurationSwitch()}
         </form>
       ) : (

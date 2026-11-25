@@ -15,6 +15,7 @@ export const LIMITS = {
   DURATION_TOLERANCE_MS: 50,
   STICKER_DIMENSION_PX: 512,
   MAX_AUDIO_TRIM_MS: 10_000,
+  MAX_RECORDING_MS: 30_000, // microphone recordings stop on their own after 30 s; the editor trims to 5 or 10 s
   AUDIO_DURATION_PRESETS: [5_000, 10_000] as const,
   MAX_STATIC_WEBP_BYTES: 102_400, // 100 KB
   MAX_REDIRECTS: 2,

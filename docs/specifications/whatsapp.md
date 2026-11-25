@@ -54,6 +54,8 @@ Consequences for StikSound:
 
 After a video export, the success text says the file downloaded, that WhatsApp does not import it as a sticker, and that only some Android beta accounts can try Create sticker by picking the video from the gallery. It also says WhatsApp decides the duration and the audio, and that the beta is not officially documented. The copy toast says that pasting the file in the chat sends a video and does not add it to stickers.
 
+On Android, Save puts the MP4 in the Gallery (`Movies/StikSound`) so it shows up in WhatsApp's Create sticker picker, and the success text lists those steps. After Share, a notice says WhatsApp receives a video and points to Save + Create sticker. Neither text promises that the option exists on every account.
+
 After a sound-bundle export, the success text says the ZIP contains the sticker and the sound as two files, and that WhatsApp may still treat the image as a normal sticker.
 
 The success text does not call the MP4 a WhatsApp sound sticker.
