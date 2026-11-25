@@ -11,7 +11,7 @@ StikSound ships four clients (desktop, Chrome extension, web PWA and Android). T
 | Record from the microphone | No | No | No | Yes, after the `RECORD_AUDIO` prompt |
 | Drag and drop files | Yes | Yes | Yes, onto the editor page | No |
 | System file picker | Yes | Yes | Yes, through the page file input | Yes, `ACTION_GET_CONTENT` (gallery, Files) |
-| Choose an output folder | Yes | Yes | No. The browser downloads files | No. `Download/StikSound` or the share sheet |
+| Choose an output folder | Yes | Yes | No. The browser downloads files | No. Gallery (`Movies/StikSound`, `Pictures/StikSound`), `Download/StikSound` for ZIP, or the share sheet |
 | Local project index | SQLite | SQLite | IndexedDB for the open project only | None. Portable package only |
 | Portable package | Read and write | Read and write | Read and write | Read and write |
 | MP3 decode and trim | Yes | Yes | Yes, when the browser can decode the file | Yes, Android System WebView decoders |
@@ -46,9 +46,10 @@ Behavior that must match Windows: import rules, trim semantics, manifest, WebP l
 - The page is served by `WebViewAssetLoader` from `https://appassets.androidplatform.net/assets/www/`, a secure context where WebCodecs and MediaRecorder work offline.
 - `minSdk 29`, `targetSdk 36`. Permissions: `INTERNET` (MyInstants only) and `RECORD_AUDIO` (runtime, asked the first time the user taps Record), plus the install-time `MODIFY_AUDIO_SETTINGS` the WebView audio stack needs. Cleartext traffic is off and backups are off.
 - WebView hardening: no `file://` access (`content://` is allowed only so the file input can read what the system picker returns; the page CSP still blocks loading it), navigation outside the app origin opens the system browser, and remote debugging is on in debug builds only.
-- The native bridge (`window.StikSoundNative`, `WebMessageListener`) is injected only for the app origin. Its operations are `fetchMyInstants`, `uploadChunk`, `save` (MediaStore `Download/StikSound`) and `share` (FileProvider over `cache/share` + `ACTION_SEND` chooser).
+- The native bridge (`window.StikSoundNative`, `WebMessageListener`) is injected only for the app origin. Its operations are `fetchMyInstants`, `uploadChunk`, `save` (MediaStore: video to `Movies/StikSound`, images to `Pictures/StikSound`, anything else to `Download/StikSound`) and `share` (FileProvider over `cache/share` + `ACTION_SEND` chooser).
 - Incoming `ACTION_SEND` and `ACTION_SEND_MULTIPLE`: images and video clips become the sticker, audio becomes the sound, and text with a link becomes a MyInstants import. Incoming files are capped at 100 MB.
 - Transparent WebM is not offered (`transparentVideo: false`), matching the mobile web.
+- Videos are saved to the Gallery on purpose: WhatsApp's in-app "Create sticker" (Android beta, some accounts) lists gallery media only. Sharing a file to WhatsApp always sends a video; after a share the app says so (`shareDoneToast`) and points to Save + Create sticker.
 - Microphone recording: `ShellBridge.startAudioRecording` asks for `RECORD_AUDIO` through the bridge (`requestMicrophone`), then records with `getUserMedia` + `MediaRecorder` (`packages/media-web/src/audio-recorder.ts`). `WebChromeClient.onPermissionRequest` grants only `RESOURCE_AUDIO_CAPTURE`, only to the app origin, only while the OS permission is held. Takes are re-encoded to 48 kHz mono WAV and stop automatically at `LIMITS.MAX_RECORDING_MS` (30 s). When the permission is permanently denied the app opens its Settings page and shows `microphone-denied`.
 
 ## Chrome extension

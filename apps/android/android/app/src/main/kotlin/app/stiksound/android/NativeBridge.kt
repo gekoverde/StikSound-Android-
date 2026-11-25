@@ -27,7 +27,7 @@ class NativeBridge(
 ) : WebViewCompat.WebMessageListener {
 
     interface Host {
-        fun saveToDownloads(name: String, mime: String, bytes: ByteArray): String
+        fun saveExport(name: String, mime: String, bytes: ByteArray): String
         fun stageForShare(name: String, bytes: ByteArray): File
         fun launchShare(file: File, mime: String)
 
@@ -75,7 +75,7 @@ class NativeBridge(
             }
             "save" -> background(replyProxy, id) {
                 val bytes = blobs.finishUpload(request.getString("uploadId"))
-                val path = host.saveToDownloads(request.getString("name"), mimeOf(request), bytes)
+                val path = host.saveExport(request.getString("name"), mimeOf(request), bytes)
                 JSONObject().put("path", path)
             }
             "share" -> background(replyProxy, id) {

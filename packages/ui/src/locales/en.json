@@ -45,6 +45,7 @@
   "exportSuccessWebp": "WebP sticker downloaded. It is a still image, without audio.",
   "exportSuccessBundle": "Bundle saved. Note: it contains image and sound as separate files; WhatsApp may treat the image as a normal sticker.",
   "close": "Close",
+  "shareDoneToast": "",
   "shareReadyToast": "Video ready. Tap \"Share\" to send it to WhatsApp or save it to Photos.",
   "videoSilentToast": "This video has no sound (or it could not be read). You can pick a sound with the audio button."
 }

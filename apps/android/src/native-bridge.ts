@@ -156,7 +156,7 @@ async function upload(bytes: Uint8Array): Promise<string> {
   return uploadId;
 }
 
-/** Saves into Download/StikSound through MediaStore. Resolves with the visible path. */
+/** Saves through MediaStore: videos to Movies/StikSound (Gallery), WebP to Pictures/StikSound, ZIP to Download/StikSound. */
 export async function saveFile(name: string, mime: string, bytes: Uint8Array): Promise<string> {
   const uploadId = await upload(bytes);
   const result = await call<{ path: string }>("save", { uploadId, name, mime });

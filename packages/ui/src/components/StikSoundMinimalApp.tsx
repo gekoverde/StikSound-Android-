@@ -517,7 +517,7 @@ export const StikSoundMinimalApp: React.FC<StikSoundMinimalAppProps> = ({
   const copyArtifactNow = async (artifact: ExportArtifact) => {
     if (shell.shareArtifact) {
       const outcome = await shell.shareArtifact(artifact);
-      setStatusMessage(outcome === "needs-tap" ? copy.shareReadyToast : null);
+      setStatusMessage(outcome === "needs-tap" ? copy.shareReadyToast : copy.shareDoneToast || null);
       return;
     }
     if (shell.copyArtifactToClipboard) {

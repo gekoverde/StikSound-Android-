@@ -413,12 +413,17 @@ Cómo funciona:
 
 - El editor es el mismo de `packages/ui` y se sirve desde los assets del APK en `https://appassets.androidplatform.net` (`WebViewAssetLoader`), así que no necesita servidor ni conexión.
 - `MainActivity.kt` aloja la WebView, abre el selector de archivos del sistema y recibe lo que compartes a StikSound (imagen, GIF, vídeo, audio o un enlace de MyInstants).
-- `NativeBridge.kt` expone `window.StikSoundNative` (`WebMessageListener`) para descargar de MyInstants, guardar en `Descargas/StikSound` y abrir la hoja de compartir (WhatsApp, Telegram…).
+- `NativeBridge.kt` expone `window.StikSoundNative` (`WebMessageListener`) para descargar de MyInstants, guardar (vídeos en la **Galería** › `Películas/StikSound`, WebP en `Imágenes/StikSound`, ZIP en `Descargas/StikSound`) y abrir la hoja de compartir (WhatsApp, Telegram…).
 - `MyInstantsFetcher.kt` es un port línea a línea de la política de desktop, con tests JVM que replican los de TypeScript.
 - **🎙 Grabar** usa el micrófono: la primera vez Android muestra su diálogo de permiso (`RECORD_AUDIO`). La WebView solo concede la captura de audio (nunca la cámara) a la página propia de la app. La toma se convierte a WAV de 48 kHz y se corta sola a los 30 s; después se recorta a 5 o 10 s como cualquier audio. Si deniegas el permiso dos veces, Android ya no vuelve a preguntar y la app abre los Ajustes de StikSound para activarlo a mano.
 
 > [!NOTE]
-> Igual que en las demás versiones, el MP4 que se comparte es un **vídeo**, no un sticker sonoro oficial de WhatsApp. Consulta [docs/specifications/whatsapp.md](docs/specifications/whatsapp.md).
+> **¿Por qué llega como vídeo a WhatsApp?** Ninguna app de terceros puede enviar ni instalar un sticker con sonido: WhatsApp no tiene API para eso. Si compartes el MP4, WhatsApp lo manda como vídeo. Para convertirlo en sticker con sonido:
+>
+> 1. En StikSound pulsa **⬇ Guardar** → *Vídeo MP4 en la Galería* (elige **5s** para que WhatsApp no lo recorte).
+> 2. En WhatsApp abre un chat → 😊 → **Stickers** → **Crear** (＋) y elige el vídeo de *Películas › StikSound*.
+>
+> Esa opción de WhatsApp solo aparece en algunas cuentas de la beta de Android y WhatsApp decide la duración y el audio. Consulta [docs/specifications/whatsapp.md](docs/specifications/whatsapp.md).
 
 ---
 

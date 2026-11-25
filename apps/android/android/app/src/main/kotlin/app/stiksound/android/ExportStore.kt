@@ -2,11 +2,10 @@ package app.stiksound.android
 
 import android.content.ContentValues
 import android.content.Context
-import android.os.Environment
 import android.provider.MediaStore
 import java.io.File
 
-/** Writes exports to Download/StikSound or stages them for the share sheet. */
+/** Writes exports to the gallery or Downloads, or stages them for the share sheet. */
 object ExportStore {
     private const val SUBFOLDER = "StikSound"
 
@@ -21,20 +20,44 @@ object ExportStore {
         return cleaned.ifEmpty { "stiksound" }
     }
 
-    fun saveToDownloads(context: Context, rawName: String, mime: String, bytes: ByteArray): String {
+    /** Where an export lands. Videos and images go to the gallery so WhatsApp's own pickers see them. */
+    // Literal names equal Environment.DIRECTORY_MOVIES / _PICTURES / _DOWNLOADS (kept literal so JVM tests run).
+    enum class Destination(val relativeDir: String) {
+        GALLERY_VIDEO("Movies/$SUBFOLDER"),
+        GALLERY_IMAGE("Pictures/$SUBFOLDER"),
+        DOWNLOADS("Download/$SUBFOLDER"),
+    }
+
+    fun destinationFor(mime: String): Destination = when {
+        mime.startsWith("video/") -> Destination.GALLERY_VIDEO
+        mime.startsWith("image/") -> Destination.GALLERY_IMAGE
+        else -> Destination.DOWNLOADS
+    }
+
+    /**
+     * MP4/WebM -> Movies/StikSound (Gallery), WebP -> Pictures/StikSound, ZIP -> Download/StikSound.
+     * The gallery matters: WhatsApp's "Create sticker" only lists photos and videos from there.
+     */
+    fun saveExport(context: Context, rawName: String, mime: String, bytes: ByteArray): String {
         val name = safeFileName(rawName)
+        val destination = destinationFor(mime)
+        val collection = when (destination) {
+            Destination.GALLERY_VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            Destination.GALLERY_IMAGE -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            Destination.DOWNLOADS -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        }
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, mime)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$SUBFOLDER")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, destination.relativeDir)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: throw BridgeException("encode-failed", "could not create the file in Downloads")
+        val uri = resolver.insert(collection, values)
+            ?: throw BridgeException("encode-failed", "could not create the file in ${destination.relativeDir}")
         try {
             resolver.openOutputStream(uri)?.use { it.write(bytes) }
-                ?: throw BridgeException("encode-failed", "could not open the file in Downloads")
+                ?: throw BridgeException("encode-failed", "could not open the file in ${destination.relativeDir}")
             values.clear()
             values.put(MediaStore.MediaColumns.IS_PENDING, 0)
             resolver.update(uri, values, null, null)
@@ -42,7 +65,7 @@ object ExportStore {
             resolver.delete(uri, null, null)
             throw e
         }
-        return "${Environment.DIRECTORY_DOWNLOADS}/$SUBFOLDER/$name"
+        return "${destination.relativeDir}/$name"
     }
 
     /** Only the latest export is kept in cache/share, the one folder the FileProvider exposes. */

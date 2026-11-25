@@ -264,8 +264,8 @@ class MainActivity : ComponentActivity(), NativeBridge.Host {
 
     // ----- NativeBridge.Host --------------------------------------------------------------------
 
-    override fun saveToDownloads(name: String, mime: String, bytes: ByteArray): String =
-        ExportStore.saveToDownloads(this, name, mime, bytes)
+    override fun saveExport(name: String, mime: String, bytes: ByteArray): String =
+        ExportStore.saveExport(this, name, mime, bytes)
 
     override fun stageForShare(name: String, bytes: ByteArray): File =
         ExportStore.stageForShare(this, name, bytes)

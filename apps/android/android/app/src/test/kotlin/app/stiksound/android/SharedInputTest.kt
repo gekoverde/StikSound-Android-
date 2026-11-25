@@ -35,4 +35,12 @@ class SharedInputTest {
         assertEquals("stiksound", ExportStore.safeFileName("..."))
         assertEquals("_and_.zip", ExportStore.safeFileName("ñandú.zip"))
     }
+
+    @Test
+    fun sendsVideosAndImagesToTheGallery() {
+        assertEquals("Movies/StikSound", ExportStore.destinationFor("video/mp4").relativeDir)
+        assertEquals("Movies/StikSound", ExportStore.destinationFor("video/webm").relativeDir)
+        assertEquals("Pictures/StikSound", ExportStore.destinationFor("image/webp").relativeDir)
+        assertEquals("Download/StikSound", ExportStore.destinationFor("application/zip").relativeDir)
+    }
 }

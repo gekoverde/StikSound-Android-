@@ -232,6 +232,41 @@ describe("StikSoundMinimalApp UI", () => {
     expect(screen.getByTestId("record-btn")).toBeTruthy();
   });
 
+  it("shows the shell's after-share notice, and nothing when the label is empty", async () => {
+    const shareArtifact = vi.fn().mockResolvedValue("shared");
+    const take = { bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]), name: "mic.wav" };
+    const startAudioRecording = vi.fn().mockResolvedValue({ stop: vi.fn().mockResolvedValue(take), cancel: vi.fn() });
+    const deliver: Array<(item: import("../src/index").IncomingItem) => void> = [];
+    const shell = {
+      saveArtifact: vi.fn(),
+      shareArtifact,
+      startAudioRecording,
+      subscribeIncoming: (h: (item: import("../src/index").IncomingItem) => void) => {
+        deliver.push(h);
+        return () => undefined;
+      }
+    };
+
+    render(
+      <StikSoundMinimalApp
+        engine={createTestEngine(512, 512)}
+        shell={shell}
+        initialLocale="es"
+        labelOverrides={{ es: { shareDoneToast: "Llega como vídeo; guárdalo para crear el sticker." } }}
+      />
+    );
+    act(() => deliver[0]!({ kind: "sticker", bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]), name: "s.png" }));
+    await waitFor(() => expect(screen.getByTestId("record-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("record-btn"));
+    await waitFor(() => expect(screen.getByTestId("record-stop-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("record-stop-btn"));
+    await waitFor(() => expect((screen.getByTestId("export-ok-btn") as HTMLButtonElement).disabled).toBe(false));
+
+    fireEvent.click(screen.getByTestId("export-ok-btn"));
+    await waitFor(() => expect(shareArtifact).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId("status-banner").textContent).toContain("Llega como vídeo"));
+  });
+
   it("hides the record button when the shell cannot record", () => {
     render(<StikSoundMinimalApp engine={createTestEngine()} shell={{ saveArtifact: vi.fn() }} initialLocale="en" />);
     expect(screen.queryByTestId("record-btn")).toBeNull();
