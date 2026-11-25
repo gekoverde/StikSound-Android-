@@ -22,6 +22,12 @@ import { TimelineTrimBar } from "./TimelineTrimBar";
 
 export type ShareOutcome = "shared" | "cancelled" | "needs-tap";
 
+/** Media or a link handed to the app from outside (for example the Android share sheet). */
+export type IncomingItem =
+  | { kind: "sticker"; bytes: Uint8Array; name: string }
+  | { kind: "audio"; bytes: Uint8Array; name: string }
+  | { kind: "url"; url: string };
+
 export interface ShellBridge {
   saveArtifact(artifact: ExportArtifact): Promise<string | void>;
   copyArtifactToClipboard?(artifact: ExportArtifact): Promise<void>;
@@ -32,6 +38,12 @@ export interface ShellBridge {
   shareArtifact?(artifact: ExportArtifact): Promise<ShareOutcome>;
   saveProjectZip?(zipBytes: Uint8Array, suggestedName: string): Promise<void>;
   openProjectZip?(): Promise<Uint8Array | null>;
+  /**
+   * Shells that receive files from the OS call `handler` for each item.
+   * The shell must buffer items that arrive before the first subscription.
+   * Returns an unsubscribe function.
+   */
+  subscribeIncoming?(handler: (item: IncomingItem) => void): () => void;
 }
 
 export interface PlatformOptions {
@@ -326,6 +338,41 @@ export const StikSoundMinimalApp: React.FC<StikSoundMinimalAppProps> = ({
     window.addEventListener("paste", handleGlobalPaste);
     return () => window.removeEventListener("paste", handleGlobalPaste);
   }, [handleGlobalPaste]);
+
+  // Items handed over by the shell (for example the Android share sheet) wait in a ref and are
+  // imported one at a time, so an image and a sound shared together do not race. The counter
+  // only re-runs the effect; the ref is the single source of truth for what is still pending.
+  const incomingRef = useRef<IncomingItem[]>([]);
+  const incomingWorkingRef = useRef(false);
+  const [incomingTick, setIncomingTick] = useState(0);
+
+  useEffect(() => {
+    if (!shell.subscribeIncoming) return;
+    return shell.subscribeIncoming((item) => {
+      incomingRef.current.push(item);
+      setIncomingTick((tick) => tick + 1);
+    });
+  }, [shell]);
+
+  useEffect(() => {
+    if (isBusy || incomingWorkingRef.current) return;
+    const item = incomingRef.current.shift();
+    if (!item) return;
+    incomingWorkingRef.current = true;
+    let work: Promise<void> = Promise.resolve();
+    if (item.kind === "sticker") {
+      work = importStickerBytes(item.bytes, item.name);
+    } else if (item.kind === "audio") {
+      work = importAudioBytes(item.bytes, item.name);
+    } else if (allowMyInstantsUrl) {
+      setUrlInput(item.url);
+      work = importMyInstantsUrl(item.url);
+    }
+    void work.finally(() => {
+      incomingWorkingRef.current = false;
+      setIncomingTick((tick) => tick + 1);
+    });
+  }, [incomingTick, isBusy, importStickerBytes, importAudioBytes, importMyInstantsUrl, allowMyInstantsUrl]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {

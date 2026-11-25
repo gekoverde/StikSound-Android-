@@ -1,24 +1,24 @@
 # Platform specification
 
-StikSound ships three clients. They share the project schema, the validation rules, and the screen flow. They do not share one media engine.
+StikSound ships four clients (desktop, Chrome extension, web PWA and Android). They share the project schema, the validation rules, and the screen flow. They do not share one media engine.
 
 ## Capability matrix
 
-| Capability | Windows app | macOS app | Chrome extension |
-| --- | --- | --- | --- |
-| Paste image | Yes, Ctrl+V | Yes, Cmd+V | Yes, while the editor tab is focused |
-| Paste MyInstants URL | Yes | Yes | Yes |
-| Drag and drop files | Yes | Yes | Yes, onto the editor page |
-| System file picker | Yes | Yes | Yes, through the page file input |
-| Choose an output folder | Yes | Yes | No. The browser downloads files |
-| Local project index | SQLite | SQLite | IndexedDB for the open project only |
-| Portable package | Read and write | Read and write | Read and write |
-| MP3 decode and trim | Yes | Yes | Yes, when the browser can decode the file |
-| Ogg Opus encode | Yes | Yes | Best effort via the web encoder. Otherwise AC-014 |
-| WebP encode with alpha | Yes | Yes | Yes, via the shared web encoder |
-| MyInstants fetch | Rust HTTP client | Rust HTTP client | Extension host permission, same allowlist |
-| Install into WhatsApp | No | No | No |
-| Script WhatsApp Web | No | No | No |
+| Capability | Windows app | macOS app | Chrome extension | Android app |
+| --- | --- | --- | --- | --- |
+| Paste image | Yes, Ctrl+V | Yes, Cmd+V | Yes, while the editor tab is focused | Share sheet: "Share to StikSound" from any app |
+| Paste MyInstants URL | Yes | Yes | Yes | Yes, typed or shared as text |
+| Drag and drop files | Yes | Yes | Yes, onto the editor page | No |
+| System file picker | Yes | Yes | Yes, through the page file input | Yes, `ACTION_GET_CONTENT` (gallery, Files) |
+| Choose an output folder | Yes | Yes | No. The browser downloads files | No. `Download/StikSound` or the share sheet |
+| Local project index | SQLite | SQLite | IndexedDB for the open project only | None. Portable package only |
+| Portable package | Read and write | Read and write | Read and write | Read and write |
+| MP3 decode and trim | Yes | Yes | Yes, when the browser can decode the file | Yes, Android System WebView decoders |
+| Ogg Opus encode | Yes | Yes | Best effort via the web encoder. Otherwise AC-014 | Same as the extension |
+| WebP encode with alpha | Yes | Yes | Yes, via the shared web encoder | Yes, via the shared web encoder |
+| MyInstants fetch | Rust HTTP client | Rust HTTP client | Extension host permission, same allowlist | Kotlin `HttpURLConnection`, same allowlist and IP checks |
+| Install into WhatsApp | No | No | No | No. The MP4 goes through the share sheet as a video |
+| Script WhatsApp Web | No | No | No | No |
 
 ## Windows
 
@@ -38,6 +38,16 @@ StikSound ships three clients. They share the project schema, the validation rul
 - Keyboard shortcut for paste is Cmd+V. The rest of the editing keys follow the same commands as Windows, with Command in place of Control.
 
 Behavior that must match Windows: import rules, trim semantics, manifest, WebP limits, error texts (same catalog), and the disabled state of the native adapter.
+
+## Android
+
+- `apps/android`: a TypeScript shell (`src/`) built by Vite into the assets of a Kotlin Gradle project (`android/`). There is no Rust and no server.
+- The page is served by `WebViewAssetLoader` from `https://appassets.androidplatform.net/assets/www/`, a secure context where WebCodecs and MediaRecorder work offline.
+- `minSdk 29`, `targetSdk 36`. The only permission is `INTERNET`. Cleartext traffic is off and backups are off.
+- WebView hardening: no `file://` access (`content://` is allowed only so the file input can read what the system picker returns; the page CSP still blocks loading it), navigation outside the app origin opens the system browser, and remote debugging is on in debug builds only.
+- The native bridge (`window.StikSoundNative`, `WebMessageListener`) is injected only for the app origin. Its operations are `fetchMyInstants`, `uploadChunk`, `save` (MediaStore `Download/StikSound`) and `share` (FileProvider over `cache/share` + `ACTION_SEND` chooser).
+- Incoming `ACTION_SEND` and `ACTION_SEND_MULTIPLE`: images and video clips become the sticker, audio becomes the sound, and text with a link becomes a MyInstants import. Incoming files are capped at 100 MB.
+- Transparent WebM is not offered (`transparentVideo: false`), matching the mobile web.
 
 ## Chrome extension
 

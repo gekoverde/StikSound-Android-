@@ -29,3 +29,30 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Run cargo test
         run: cargo test --workspace --exclude stiksound-desktop
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Android web bundle
+        run: npm run build -w @stiksound/android
+      - name: Kotlin unit tests and debug APK
+        working-directory: apps/android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon -PskipWebBuild testDebugUnitTest assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stiksound-android-debug
+          path: apps/android/android/app/build/outputs/apk/debug/*.apk

@@ -7,7 +7,9 @@ stiksound/
 ├── apps/
 │   ├── desktop/                  # Tauri 2 shell and thin React bootstrap
 │   │   └── src-tauri/
-│   └── extension/                # Manifest V3, editor tab, service worker
+│   ├── extension/                # Manifest V3, editor tab, service worker
+│   ├── web/                      # PWA for GitHub Pages
+│   └── android/                  # TS shell (src/) + Kotlin Gradle project (android/)
 ├── packages/
 │   ├── core/                     # domain, use cases, schema validation
 │   ├── providers/                # MyInstants provider and URL policy

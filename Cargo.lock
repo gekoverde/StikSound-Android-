@@ -3536,7 +3536,6 @@ dependencies = [
  "stiksound-audio-engine",
  "stiksound-image-engine",
  "stiksound-project-store",
- "stiksound-video-engine",
  "tauri",
  "tauri-build",
  "tokio",

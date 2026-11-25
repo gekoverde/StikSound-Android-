@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="share_chooser_title">Share with…</string>
+    <string name="incoming_unsupported">StikSound can\'t use that kind of file.</string>
+    <string name="incoming_too_large">The file is too large.</string>
+    <string name="incoming_read_failed">Couldn\'t read the shared file.</string>
+    <string name="saved_to_downloads">Saved to Downloads/StikSound</string>
+    <string name="no_share_target">No app can share this file.</string>
+    <string name="webview_missing">This phone has no compatible Android WebView. Update \"Android System WebView\" from Google Play.</string>
+</resources>

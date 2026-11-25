@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' blob: data:; img-src 'self' blob: data:; media-src 'self' blob: data:; connect-src https://www.myinstants.com https://myinstants.com"
+      "csp": "default-src 'self' blob: data:; img-src 'self' blob: data:; media-src 'self' blob: data:; connect-src https://www.myinstants.com https://myinstants.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
     }
   },
   "bundle": {
